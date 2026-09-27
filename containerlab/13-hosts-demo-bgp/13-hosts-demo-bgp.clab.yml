@@ -1,0 +1,173 @@
+name: 13-hosts-demo-bgp
+
+mgmt:
+  network: bgp13-mgmt
+  ipv4-subnet: 172.31.30.0/24
+
+topology:
+  defaults:
+    kind: linux
+    image: vadims06/frr:v10.8_bmp
+
+  nodes:
+    bmpwatcher:
+      image: ${BMPWATCHER_IMAGE:=vadims06/bmpwatcher:latest}
+      mgmt-ipv4: 172.31.30.100
+      binds:
+        - ./artifacts:/var/log/bmpwatcher
+      # TOPOLOGRAPH_HOST, TOPOLOGRAPH_PORT and TOPOLOGRAPH_API_TOKEN, shared with Fluent Bit.
+      env-files:
+        - ../../.env
+      cmd: >-
+        --bmp-port=11019
+        --watcher-name=bmpwatcher
+        --source-id=13-hosts-demo-bgp
+        --events=/var/log/bmpwatcher/events.jsonl
+        --topology-file=/var/log/bmpwatcher/topology.json
+        --topolograph-topology-file=/var/log/bmpwatcher/topolograph_topology.json
+        --collection-period-seconds=20
+        --stability-seconds=5
+        --collection-timeout-seconds=60
+        --settling-seconds=10
+        --periodic-update-minutes=0
+    r10:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r10/frr.conf:/etc/frr/frr.conf
+    r100:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r100/frr.conf:/etc/frr/frr.conf
+    r101:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r101/frr.conf:/etc/frr/frr.conf
+    r11:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r11/frr.conf:/etc/frr/frr.conf
+    r110:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r110/frr.conf:/etc/frr/frr.conf
+    r111:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r111/frr.conf:/etc/frr/frr.conf
+    r13:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r13/frr.conf:/etc/frr/frr.conf
+    r130:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r130/frr.conf:/etc/frr/frr.conf
+        - leaf.sh:/usr/local/bin/leaf.sh
+      exec:
+        - /usr/local/bin/leaf.sh 123.123.30.30 "1010 1020" "bond0/eth4:1010"
+    r131:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r131/frr.conf:/etc/frr/frr.conf
+        - leaf.sh:/usr/local/bin/leaf.sh
+      exec:
+        - /usr/local/bin/leaf.sh 123.123.31.31 "1010 1020" "bond0/eth4:1010 eth5:1020"
+    r14:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r14/frr.conf:/etc/frr/frr.conf
+        - leaf.sh:/usr/local/bin/leaf.sh
+      exec:
+        - /usr/local/bin/leaf.sh 123.14.14.14 "1010" "eth3:1010"
+    r15:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r15/frr.conf:/etc/frr/frr.conf
+        - leaf.sh:/usr/local/bin/leaf.sh
+      exec:
+        - /usr/local/bin/leaf.sh 123.15.15.15 "1010" "eth3:1010"
+    r30:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r30/frr.conf:/etc/frr/frr.conf
+    r31:
+      binds:
+        - daemons:/etc/frr/daemons
+        - r31/frr.conf:/etc/frr/frr.conf
+    # host1 is single-homed: eth1 to r14 is up, eth2 to r15 starts down.
+    # move-host1.sh swaps them, which is a MAC move between two VTEPs.
+    host1:
+      image: alpine:3.20
+      sysctls:
+        net.ipv6.conf.all.disable_ipv6: 1
+      # a MAC set with the link down: the carrier drop flushes the leaf's copy of the old one
+      exec:
+        - ip link set eth1 down
+        - ip link set eth2 down
+        - ip link set eth1 address 00:c1:ab:00:00:01
+        - ip link set eth2 address 00:c1:ab:00:00:01
+        - ip addr add 10.10.10.11/24 dev eth1
+        - ip link set eth1 up
+        - ip route add 10.10.20.0/24 via 10.10.10.1
+      cmd: sleep infinity
+    # host2 sits on an Ethernet Segment shared by r130 and r131 (multihoming).
+    host2:
+      image: alpine:3.20
+      sysctls:
+        net.ipv6.conf.all.disable_ipv6: 1
+      exec:
+        - ip link add bond0 type bond mode active-backup
+        - ip link set eth1 down
+        - ip link set eth2 down
+        - ip link set eth1 master bond0
+        - ip link set eth2 master bond0
+        - ip link set bond0 address 00:c1:ab:00:00:02
+        - ip link set bond0 up
+        - ip addr add 10.10.10.12/24 dev bond0
+        - ip route add 10.10.20.0/24 via 10.10.10.1
+      cmd: sleep infinity
+    # host3 is in VNI 1020; host1 reaches it through VRF tenant1 (L3VNI 5000).
+    host3:
+      image: alpine:3.20
+      sysctls:
+        net.ipv6.conf.all.disable_ipv6: 1
+      exec:
+        - ip link set eth1 down
+        - ip link set eth1 address 00:c1:ab:00:00:03
+        - ip addr add 10.10.20.13/24 dev eth1
+        - ip link set eth1 up
+        - ip route add 10.10.10.0/24 via 10.10.20.1
+      cmd: sleep infinity
+
+  links:
+    - endpoints: ["r10:eth1", "r100:eth1"]
+    - endpoints: ["r10:eth2", "r100:eth2"]
+    - endpoints: ["r10:eth3", "r101:eth1"]
+    - endpoints: ["r10:eth4", "r11:eth1"]
+    - endpoints: ["r11:eth2", "r101:eth2"]
+    - endpoints: ["r11:eth3", "r100:eth3"]
+    - endpoints: ["r13:eth1", "r101:eth3"]
+    - endpoints: ["r13:eth2", "r100:eth4"]
+    - endpoints: ["r14:eth1", "r111:eth1"]
+    - endpoints: ["r14:eth2", "r110:eth1"]
+    - endpoints: ["r15:eth1", "r111:eth2"]
+    - endpoints: ["r15:eth2", "r110:eth2"]
+    - endpoints: ["r100:eth5", "r111:eth3"]
+    - endpoints: ["r100:eth6", "r110:eth3"]
+    - endpoints: ["r100:eth7", "r101:eth4"]
+    - endpoints: ["r101:eth5", "r110:eth4"]
+    - endpoints: ["r101:eth6", "r111:eth4"]
+    - endpoints: ["r110:eth5", "r111:eth5"]
+    - endpoints: ["r10:eth5", "r30:eth1"]
+    - endpoints: ["r11:eth4", "r31:eth1"]
+    - endpoints: ["r30:eth2", "r131:eth1"]
+    - endpoints: ["r30:eth3", "r130:eth1"]
+    - endpoints: ["r30:eth4", "r31:eth2"]
+    - endpoints: ["r31:eth3", "r131:eth2"]
+    - endpoints: ["r31:eth4", "r130:eth2"]
+    - endpoints: ["r130:eth3", "r131:eth3"]
+    - endpoints: ["host1:eth1", "r14:eth3"]
+    - endpoints: ["host1:eth2", "r15:eth3"]
+    - endpoints: ["host2:eth1", "r130:eth4"]
+    - endpoints: ["host2:eth2", "r131:eth4"]
+    - endpoints: ["host3:eth1", "r131:eth5"]

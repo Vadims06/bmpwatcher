@@ -1,0 +1,3 @@
+artifacts/*
+!artifacts/.gitkeep
+clab-13-hosts-demo-bgp/

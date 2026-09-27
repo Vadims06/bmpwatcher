@@ -1,0 +1,60 @@
+# Fluent Bit ships every collector's events.jsonl under BMPWATCHER_LOG_DIR to
+# Topolograph; adding a collector there needs no restart.
+#   docker compose up -d                      Fluent Bit only
+#   docker compose --profile collector up -d  plus the bmpwatcher collector
+#   docker compose --profile gobmp up -d      plus the standalone gobmp collector
+services:
+  fluentbit:
+    image: fluent/fluent-bit:3.2
+    container_name: ${CONTAINER_NAME:-bmp-fluentbit}
+    restart: unless-stopped
+    volumes:
+      - ${BMPWATCHER_LOG_DIR}:/labs:ro
+      - ./fluentbit/fluent-bit.yaml:/fluent-bit/etc/fluent-bit.yaml:ro
+      - ./fluentbit/parse_events.lua:/fluent-bit/etc/parse_events.lua:ro
+      - ./fluentbit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+    environment:
+      EVENTS_GLOB: /labs/*/artifacts/events.jsonl
+      # The same Topolograph the collector posts its snapshot to.
+      WEBHOOK_HOST: ${TOPOLOGRAPH_HOST}
+      WEBHOOK_PORT: ${TOPOLOGRAPH_PORT:-8080}
+      WEBHOOK_URI: /api/watcher/bgp/events
+      WEBHOOK_TLS_ON: ${WEBHOOK_TLS_ON:-off}
+      TOPOLOGRAPH_API_TOKEN: ${TOPOLOGRAPH_API_TOKEN}
+    command: -c /fluent-bit/etc/fluent-bit.yaml
+
+  bmpwatcher:
+    profiles: ["collector"]
+    image: ${BMP_IMAGE:-vadims06/bmpwatcher:latest}
+    container_name: ${BMP_CONTAINER_NAME:-bmpwatcher}
+    restart: unless-stopped
+    ports:
+      - "${BMP_PORT:-11019}:11019"
+    volumes:
+      - ${BMPWATCHER_LOG_DIR}:/var/log/bmpwatcher
+    environment:
+      TOPOLOGRAPH_HOST: ${TOPOLOGRAPH_HOST}
+      TOPOLOGRAPH_PORT: ${TOPOLOGRAPH_PORT:-8080}
+      TOPOLOGRAPH_API_TOKEN: ${TOPOLOGRAPH_API_TOKEN}
+    command: >
+      --bmp-port=11019
+      --source-id=${SOURCE_ID:-pe1}
+      --watcher-name=${WATCHER_NAME:-bmp-dc1}
+      --events=/var/log/bmpwatcher/${SOURCE_ID:-pe1}/artifacts/events.jsonl
+      --topology-file=/var/log/bmpwatcher/${SOURCE_ID:-pe1}/topology.json
+
+  # The gobmp fork bmpwatcher embeds, as a raw per-message stream without the
+  # table-replay/event split. One source at a time.
+  gobmp:
+    profiles: ["gobmp"]
+    image: ${GOBMP_IMAGE:-vadims06/gobmp:v1.0}
+    container_name: ${GOBMP_CONTAINER_NAME:-gobmp}
+    restart: unless-stopped
+    ports:
+      - "${GOBMP_PORT:-5000}:5000"
+    volumes:
+      - ${BMPWATCHER_LOG_DIR}:/var/log/gobmp
+    command: >
+      --source-port=5000
+      --dump=file
+      --msg-file=/var/log/gobmp/gobmp.jsonl
