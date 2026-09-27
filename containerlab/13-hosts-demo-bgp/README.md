@@ -177,7 +177,9 @@ and the BGP graph of the lab is bound to it.
     The same answers, and the underlay path to a host's VTEP, are in the Topolograph UI: **BGP / VPN** path mode on the
     OSPF demo graph, see the [BGP how-to](https://topolograph.com/how-to/bgp), section 11.
 
-8. Move host1 from r14 to r15
+8. Move host1 from r14 to r15. host1 starts speaking on r15 while r14 still advertises its MAC, as a migrating VM
+   does, so r15 advertises the MAC with MAC Mobility sequence 1 and r14 withdraws its own route
+   ([RFC 7432 §15](https://datatracker.ietf.org/doc/html/rfc7432#section-15)).
     ```
     cd containerlab/13-hosts-demo-bgp
     ./move-host1.sh
@@ -192,7 +194,7 @@ and the BGP graph of the lab is bound to it.
     ```
     Expected output:
     ```
-      "accepted": 18,
+      "accepted": 9,
       "duplicates": 0
     }
     ```
@@ -203,11 +205,12 @@ and the BGP graph of the lab is bound to it.
     ```
     curl -s "$TOPOLOGRAPH_URL/api/events/$G/routes?mac=00:c1:ab:00:00:01&last_minutes=5" -H "Authorization: Bearer $T"
     ```
-    Expected output: withdraws on VTEP `123.14.14.14`, then adds on VTEP `123.15.15.15`; the first add carries the move
+    Expected output: adds on VTEP `123.15.15.15` with `mm_seq: 1`, the first of them marked with the move, and
+    withdraws on VTEP `123.14.14.14`
     ```
-    {"at": "2026-09-27T10:49:02.874000Z", "event": "withdraw", "evpn": {"mac": "00:c1:ab:00:00:01", "vni": 1010, "vtep": "123.14.14.14", ...}, ...}
+    {"at": "2026-09-27T11:35:58.415000Z", "event": "add", "evpn": {"mac": "00:c1:ab:00:00:01", "vni": 1010, "vtep": "123.15.15.15", "mm_seq": 1, ...}, "moved_from_vtep": "123.14.14.14", ...}
     ...
-    {"at": "2026-09-27T10:49:03.349000Z", "event": "add", "evpn": {"mac": "00:c1:ab:00:00:01", "vni": 1010, "vtep": "123.15.15.15", ...}, "moved_from_vtep": "123.14.14.14", ...}
+    {"at": "2026-09-27T11:35:58.520000Z", "event": "withdraw", "evpn": {"mac": "00:c1:ab:00:00:01", "vni": 1010, "vtep": "123.14.14.14", ...}, ...}
     ```
 
     9.2 Where is host1 now?
@@ -216,8 +219,8 @@ and the BGP graph of the lab is bound to it.
     ```
     Expected output: every route of the MAC is on VTEP `123.15.15.15` (r15)
     ```
-    {"evpn": {"mac": "00:c1:ab:00:00:01", "ip": null, "vni": 1010, "vtep": "123.15.15.15", ...}, ...}
-    {"evpn": {"mac": "00:c1:ab:00:00:01", "ip": "10.10.10.11", "vni": 1010, "l3vni": 5000, "vtep": "123.15.15.15", ...}, ...}
+    {"evpn": {"mac": "00:c1:ab:00:00:01", "ip": null, "vni": 1010, "vtep": "123.15.15.15", "mm_seq": 1, ...}, ...}
+    {"evpn": {"mac": "00:c1:ab:00:00:01", "ip": "10.10.10.11", "vni": 1010, "l3vni": 5000, "vtep": "123.15.15.15", "mm_seq": 1, ...}, ...}
     ```
 
 10. Stop the lab
