@@ -217,7 +217,9 @@ and the BGP graph of the lab is bound to it.
     ```
     curl -s "$TOPOLOGRAPH_URL/api/graph/$G/routes?mac=00:c1:ab:00:00:01" -H "Authorization: Bearer $T"
     ```
-    Expected output: every route of the MAC is on VTEP `123.15.15.15` (r15)
+    Expected output: two routes, both on VTEP `123.15.15.15` (r15) - MAC-only for bridging in VNI 1010, and MAC+IP,
+    which also carries L3VNI 5000 for routing through VRF `tenant1`. Each is reported by both route reflectors, pre-
+    and post-policy, so the response has more rows than these two.
     ```
     {"evpn": {"mac": "00:c1:ab:00:00:01", "ip": null, "vni": 1010, "vtep": "123.15.15.15", "mm_seq": 1, ...}, ...}
     {"evpn": {"mac": "00:c1:ab:00:00:01", "ip": "10.10.10.11", "vni": 1010, "l3vni": 5000, "vtep": "123.15.15.15", "mm_seq": 1, ...}, ...}
