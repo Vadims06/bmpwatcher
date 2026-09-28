@@ -113,8 +113,7 @@ and the BGP graph of the lab is bound to it.
     ```
     G=25Sep2026_07h31m51s_13_hosts
     ```
-    The account also holds a demo BGP graph captured on this lab (`srcid: topolograph-demo`), bound to the same graph;
-    yours is the one with `srcid: 13-hosts-demo-bgp` in `GET /api/bgp-graphs`.
+    The account also holds a demo BGP graph captured on this lab, bound to the same graph.
 
 7. Ask Topolograph about the fabric. The outputs below are trimmed to the fields that answer the question.
 

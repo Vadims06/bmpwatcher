@@ -1,5 +1,5 @@
 # BGP Topology Watcher (BMP Watcher)
-BMP Watcher is a monitoring tool of BGP control-plane changes for network engineers. It works as a passive BMP station: routers open a BMP session towards it and stream their BGP tables, the watcher never peers and never connects to a router. It collects IPv4/IPv6 unicast, VPNv4/VPNv6 and EVPN routes, sends the whole table to **Topolograph** as a BGP graph beside your OSPF/IS-IS graphs, and ships every later change to Topolograph through **Fluent Bit**. Components are wrapped into containers: the collector is the published image `vadims06/bmpwatcher`, and this repository carries the compose file that runs it.
+BMP Watcher is a monitoring tool of BGP control-plane changes for network engineers. It works as a passive BMP station: routers open a BMP session towards it and stream their BGP tables, the watcher never peers and never connects to a router. It collects IPv4/IPv6 unicast, VPNv4/VPNv6 and EVPN routes, sends the whole table to **Topolograph** as a BGP graph beside your OSPF/IS-IS graphs, and ships every later change to Topolograph through **Fluent Bit**. Components are wrapped into containers: the collector is the published image `vadims06/bmpwatcher:latest`, and this repository carries the compose file that runs it.
 
 > [!NOTE]
 > BGP monitoring needs [Topolograph v2.69](https://github.com/Vadims06/topolograph/releases) or later, EVPN needs Topolograph v2.73.
@@ -150,7 +150,7 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
     curl -s "$TOPOLOGRAPH_URL/api/graph/<graph_time>/vpns" -H "Authorization: Bearer $T"          # VNIs and VRFs
     curl -s "$TOPOLOGRAPH_URL/api/graph/<graph_time>/nodes?protocol=bgp&vni=<vni>" -H "Authorization: Bearer $T"  # leaves of a VNI
     ```
-    Every Topolograph account also holds a demo BGP graph (`srcid: topolograph-demo`). Your own is the one whose `srcid` is your `SOURCE_ID` in `GET /api/bgp-graphs`.
+    Every Topolograph account also holds a demo BGP graph.
 
 ## Troubleshooting
 ##### Symptoms
