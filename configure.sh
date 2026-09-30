@@ -47,10 +47,11 @@ if ! status=$(curl -sS -G -o "$answer" -w '%{http_code}' \
     echo "Cannot reach Topolograph at $url" >&2
     exit 1
 fi
-if [ "$status" != "200" ]; then
-    echo "Topolograph answered $status: $(cat "$answer")" >&2
-    exit 1
-fi
+case "$status" in
+    200) ;;
+    401) echo "Topolograph refused the token. Copy the command again from the watcher page." >&2; exit 1 ;;
+    *) echo "Topolograph answered $status: $(cat "$answer")" >&2; exit 1 ;;
+esac
 
 {
     echo "# Written by configure.sh from the watcher registration in Topolograph."
