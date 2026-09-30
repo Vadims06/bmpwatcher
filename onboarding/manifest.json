@@ -1,0 +1,124 @@
+{
+  "watcher_type": "bmp",
+  "title": "BMP Watcher",
+  "repo_url": "https://github.com/Vadims06/bmpwatcher",
+  "install_dir": "/opt/topolograph/bmpwatcher",
+  "host_requirements": [
+    "Linux host with Docker and Docker Compose v2",
+    "git and curl",
+    "TCP port for BMP open from the routers",
+    "Access to Topolograph over HTTP(S)"
+  ],
+  "modes": [
+    {
+      "id": "bmp",
+      "title": "BMP station",
+      "description": "Routers open a BMP session to the watcher and stream their BGP tables: IPv4/IPv6 unicast, VPNv4/VPNv6, EVPN.",
+      "router_requirements": [
+        "BMP support (RFC 7854)",
+        "TCP reachability to the watcher host"
+      ],
+      "diagram_svg": "<svg xmlns='http://www.w3.org/2000/svg' width='640' height='150' font-family='sans-serif' font-size='13'><rect x='10' y='45' width='150' height='60' rx='6' fill='#e8f1fb' stroke='#3b7dd8'/><text x='85' y='80' text-anchor='middle'>Router</text><rect x='245' y='45' width='150' height='60' rx='6' fill='#eaf7ea' stroke='#3a9a3a'/><text x='320' y='72' text-anchor='middle'>BMP Watcher</text><text x='320' y='92' text-anchor='middle' font-size='11'>(1) host IP</text><rect x='480' y='45' width='150' height='60' rx='6' fill='#f4f4f4' stroke='#777'/><text x='555' y='80' text-anchor='middle'>Topolograph</text><line x1='160' y1='75' x2='240' y2='75' stroke='#333' marker-end='url(#a)'/><text x='200' y='65' text-anchor='middle' font-size='11'>BMP (2) port</text><line x1='395' y1='75' x2='475' y2='75' stroke='#333' marker-end='url(#a)'/><text x='435' y='65' text-anchor='middle' font-size='11'>HTTP(S)</text><defs><marker id='a' markerWidth='8' markerHeight='8' refX='8' refY='4' orient='auto'><path d='M0,0 L8,4 L0,8 z' fill='#333'/></marker></defs></svg>",
+      "router_examples": [
+        {
+          "vendor": "FRR",
+          "config": "! add -M bmp to bgpd_options in /etc/frr/daemons and restart FRR\nrouter bgp <asn>\n bmp targets topolograph\n  bmp connect {watcher_host_ip} port {bmp_port} min-retry 1000 max-retry 2000\n  bmp monitor ipv4 unicast pre-policy\n  bmp monitor ipv4 unicast post-policy\n  bmp monitor ipv6 unicast pre-policy\n  bmp monitor ipv6 unicast post-policy\n  bmp monitor ipv4 vpn pre-policy\n  bmp monitor ipv4 vpn post-policy\n  bmp monitor l2vpn evpn pre-policy\n  bmp monitor l2vpn evpn post-policy"
+        },
+        {
+          "vendor": "Cisco IOS-XR",
+          "config": "bmp server 1\n host {watcher_host_ip} port {bmp_port}\n description topolograph\n!\nrouter bgp <asn>\n neighbor <peer-ip>\n  bmp-activate server 1"
+        },
+        {
+          "vendor": "Juniper Junos",
+          "config": "routing-options {\n    bmp {\n        station topolograph {\n            station-address {watcher_host_ip};\n            station-port {bmp_port};\n            route-monitoring { pre-policy; post-policy; }\n        }\n    }\n}"
+        }
+      ]
+    }
+  ],
+  "fields": [
+    {
+      "id": "watcher_host_ip",
+      "label": "Watcher host IP, as routers reach it",
+      "diagram_label": "1",
+      "type": "ip",
+      "source": "user",
+      "help": "Used only in the router configuration examples."
+    },
+    {
+      "id": "bmp_port",
+      "label": "BMP port",
+      "diagram_label": "2",
+      "type": "integer",
+      "env": "BMP_PORT",
+      "source": "default",
+      "default": 11019,
+      "min": 1,
+      "max": 65535
+    },
+    {
+      "id": "log_dir",
+      "label": "Directory for collector files",
+      "type": "string",
+      "env": "BMPWATCHER_LOG_DIR",
+      "source": "default",
+      "default": "/var/log/bmpwatcher",
+      "pattern": "^/[A-Za-z0-9_./-]+$"
+    },
+    {
+      "id": "registry_prefix",
+      "label": "Docker Hub mirror",
+      "type": "string",
+      "env": "REGISTRY_PREFIX",
+      "source": "default",
+      "default": "",
+      "pattern": "^([A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._-]+)*/)?$",
+      "help": "Prefix put before every image, e.g. mirror.example.com:5000/"
+    },
+    {
+      "id": "topolograph_host",
+      "type": "string",
+      "env": "TOPOLOGRAPH_HOST",
+      "source": "server"
+    },
+    {
+      "id": "topolograph_port",
+      "type": "integer",
+      "env": "TOPOLOGRAPH_PORT",
+      "source": "server"
+    },
+    {
+      "id": "topolograph_tls",
+      "type": "string",
+      "env": "WEBHOOK_TLS_ON",
+      "source": "server"
+    },
+    {
+      "id": "watcher_token",
+      "type": "string",
+      "env": "TOPOLOGRAPH_API_TOKEN",
+      "source": "server"
+    },
+    {
+      "id": "watcher_name",
+      "type": "slug",
+      "env": "WATCHER_NAME",
+      "source": "server"
+    },
+    {
+      "id": "source_id",
+      "type": "slug",
+      "env": "SOURCE_ID",
+      "source": "server"
+    }
+  ],
+  "commands": [
+    {
+      "title": "Download",
+      "text": "sudo git clone --branch {ref} {repo_url} {install_dir}\ncd {install_dir}"
+    },
+    {
+      "title": "Configure and run",
+      "text": "sudo ./configure.sh --url {url} --token {token}"
+    }
+  ]
+}
