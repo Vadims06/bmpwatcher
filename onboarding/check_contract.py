@@ -29,6 +29,8 @@ def get_errors(tag: str) -> list:
     example = (ROOT / ".env.example").read_text()
     if f"WATCHER_VERSION={version}\n" not in example:
         errors.append(".env.example WATCHER_VERSION differs from VERSION")
+    if f"${{WATCHER_VERSION:-{version}}}" not in (ROOT / "docker-compose.yml").read_text():
+        errors.append("docker-compose.yml WATCHER_VERSION fallback differs from VERSION")
     if tag and tag != version:
         errors.append(f"tag {tag} differs from VERSION {version}")
 

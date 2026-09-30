@@ -25,7 +25,7 @@ services:
 
   bmpwatcher:
     profiles: ["collector"]
-    image: ${BMP_IMAGE:-${REGISTRY_PREFIX:-}vadims06/bmpwatcher:${WATCHER_VERSION}}
+    image: ${BMP_IMAGE:-${REGISTRY_PREFIX:-}vadims06/bmpwatcher:${WATCHER_VERSION:-v1.1.0}}
     container_name: ${BMP_CONTAINER_NAME:-bmpwatcher}
     restart: unless-stopped
     ports:

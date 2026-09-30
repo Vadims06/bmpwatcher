@@ -34,7 +34,9 @@ fi
 host_id=$(cat /etc/machine-id 2>/dev/null || hostname)
 ref=$(git describe --tags --exact-match 2>/dev/null || git symbolic-ref -q --short HEAD 2>/dev/null || git rev-parse --short HEAD)
 answer=$(mktemp)
-trap 'rm -f "$answer"' EXIT
+# mktemp creates the file 0600, so the token is never readable by other users
+env_file=$(mktemp .env.XXXXXX)
+trap 'rm -f "$answer" "$env_file"' EXIT
 
 echo "Fetching the watcher configuration from ${url%/}"
 if ! status=$(curl -sS -G -o "$answer" -w '%{http_code}' \
@@ -58,8 +60,8 @@ esac
     echo "# Change answers on the watcher page and run configure.sh again."
     cat "$answer"
     echo "WATCHER_VERSION='$(cat VERSION)'"
-} > .env
-chmod 600 .env
+} > "$env_file"
+mv -f "$env_file" .env
 
 value() { grep "^$1=" .env | cut -d"'" -f2; }
 mkdir -p "$(value BMPWATCHER_LOG_DIR)"
