@@ -10,15 +10,16 @@ BMP Watcher is a monitoring tool of BGP control-plane changes for network engine
 
     ```bash
     # 1. Download
-    sudo git clone --branch <version> https://github.com/Vadims06/bmpwatcher /opt/topolograph/bmpwatcher
+    [ -d /opt/topolograph/bmpwatcher ] || sudo git clone https://github.com/Vadims06/bmpwatcher /opt/topolograph/bmpwatcher
     cd /opt/topolograph/bmpwatcher
+    sudo git fetch --tags origin <version> && sudo git checkout --detach FETCH_HEAD
     # 2. Configure and run
     sudo ./configure.sh --url <topolograph-url> --token <watcher-token>
     ```
-    `configure.sh` checks Docker, Docker Compose and curl, fetches your answers from Topolograph, writes `.env` and starts the collector. It installs nothing from the internet besides the images; run it again after changing answers or rotating the token.
-3. Point BMP on your routers to `<host-ip>:11019`, see [Device configuration](#device-configuration). The watcher page in Topolograph shows when the command ran, when a router connected and a link to the graph.
+    `configure.sh` checks Docker, Docker Compose, curl, git and root, fetches your answers from Topolograph, writes `.env` and starts the collector. It installs nothing from the internet besides the images; run it again after changing answers or rotating the token.
+3. Point BMP on your routers to `<host-ip>:11019` (or the BMP port you set in the form), see [Device configuration](#device-configuration). The watcher page in Topolograph shows when the command ran, when a router connected and a link to the graph.
 
-Without the Watchers page (Topolograph before v2.74), follow [How to connect BMP watcher to real network](#how-to-connect-bmp-watcher-to-real-network).
+Without the Watchers page (Topolograph before v2.74), expand **Manual setup** in [How to connect BMP watcher to real network](#how-to-connect-bmp-watcher-to-real-network).
 
 No events on the dashboard? Start with [Troubleshooting](#troubleshooting).
 
@@ -49,11 +50,17 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
 1. Choose a Linux host with Docker installed. Enable Docker at boot (`systemctl enable docker`): the containers restart after a crash and a reboot.
 2. Setup Topolograph
 
-    Launch your own Topolograph with [topolograph-docker](https://github.com/Vadims06/topolograph-docker) (`install.sh` above) or use the public https://topolograph.com.
+    Launch your own Topolograph with [topolograph-docker](https://github.com/Vadims06/topolograph-docker) or use the public https://topolograph.com.
     * Log in: on your own Topolograph with the user from its `.env` (`TOPOLOGRAPH_WEB_API_USERNAME_EMAIL` / `TOPOLOGRAPH_WEB_API_PASSWORD`, by default `ospf@topolograph.com` / `ospf`), on topolograph.com sign up.
-    * Create a token: **API → Token → Create Token**, copy the `sk-...` value.
 
 3. Setup BMP Watcher
+
+    In Topolograph open **Watchers → Add watcher → BMP Watcher**, fill in the form and run the two command blocks it shows on the Docker host, as in [Quick start](#quick-start). Topolograph issues a token for this watcher only and puts it into the command. To change answers or after **Rotate token**, run `configure.sh` again; when a newer version is out, the watcher page shows the update command.
+
+    <details>
+    <summary><b>Manual setup</b>: Topolograph before v2.74, or a collector configured by hand</summary>
+
+    Create a token in Topolograph: **API → Token → Create Token**, copy the `sk-...` value.
 
     ```bash
     git clone https://github.com/Vadims06/bmpwatcher.git
@@ -79,6 +86,8 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
     Stop it with the same profile: `docker compose --profile collector down`.
 
     `docker compose --profile gobmp up -d` runs the raw [gobmp](https://hub.docker.com/r/vadims06/gobmp) collector instead: every BMP message as is, without the snapshot/event split.
+
+    </details>
 
 4. Device configuration
 
@@ -145,7 +154,7 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
     For EVPN, the IGP graph must have the same Router IDs as the BGP speakers: upload the LSDB of your network or run [OSPF Watcher](https://github.com/Vadims06/ospfwatcher) / [IS-IS Watcher](https://github.com/Vadims06/isiswatcher). The same answers over the API:
     ```bash
     TOPOLOGRAPH_URL=http://<host-ip>:8080   # https://topolograph.com for the public one
-    T=sk-...
+    T=sk-...   # a personal token from API → Token; the watcher token works only on watcher endpoints
     curl -s "$TOPOLOGRAPH_URL/api/graph/?protocol=bgp" -H "Authorization: Bearer $T"             # the IGP graph with BGP bound to it
     curl -s "$TOPOLOGRAPH_URL/api/graph/<graph_time>/vpns" -H "Authorization: Bearer $T"          # VNIs and VRFs
     curl -s "$TOPOLOGRAPH_URL/api/graph/<graph_time>/nodes?protocol=bgp&vni=<vni>" -H "Authorization: Bearer $T"  # leaves of a VNI
