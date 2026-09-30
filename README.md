@@ -11,8 +11,7 @@ BMP Watcher is a monitoring tool of BGP control-plane changes for network engine
     ```bash
     # 1. Download
     [ -d /opt/topolograph/bmpwatcher ] || sudo git clone https://github.com/Vadims06/bmpwatcher /opt/topolograph/bmpwatcher
-    cd /opt/topolograph/bmpwatcher
-    sudo git fetch --tags origin <version> && sudo git checkout --detach FETCH_HEAD
+    cd /opt/topolograph/bmpwatcher && sudo git fetch --tags origin <version> && sudo git checkout --detach FETCH_HEAD
     # 2. Configure and run
     sudo ./configure.sh --url <topolograph-url> --token <watcher-token>
     ```
