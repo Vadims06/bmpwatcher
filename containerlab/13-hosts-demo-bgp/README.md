@@ -90,7 +90,7 @@ and the BGP graph of the lab is bound to it.
    `collector` profile:
     ```
     cd ../..
-    sudo docker compose up -d
+    sudo docker compose --profile events up -d
     sudo docker logs bmp-fluentbit 2>&1 | grep events.jsonl
     ```
     Expected output:

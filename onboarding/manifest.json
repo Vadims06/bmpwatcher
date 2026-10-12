@@ -12,8 +12,31 @@
   "modes": [
     {
       "id": "bmp",
-      "title": "BMP station",
-      "description": "Routers open a BMP session to the watcher and stream their BGP tables: IPv4/IPv6 unicast, VPNv4/VPNv6, EVPN.",
+      "title": "Topology + events",
+      "description": "Routers open a BMP session to the watcher and stream their BGP tables: IPv4/IPv6 unicast, VPNv4/VPNv6, EVPN. Topolograph keeps the topology, route search and change events.",
+      "router_requirements": [
+        "BMP support (RFC 7854)",
+        "TCP reachability to the watcher host"
+      ],
+      "router_examples": [
+        {
+          "vendor": "FRR",
+          "config": "! add -M bmp to bgpd_options in /etc/frr/daemons and restart FRR\nrouter bgp <asn>\n bmp targets topolograph\n  bmp connect {watcher_host_ip} port {bmp_port} min-retry 1000 max-retry 2000\n  bmp monitor ipv4 unicast pre-policy\n  bmp monitor ipv4 unicast post-policy\n  bmp monitor ipv6 unicast pre-policy\n  bmp monitor ipv6 unicast post-policy\n  bmp monitor ipv4 vpn pre-policy\n  bmp monitor ipv4 vpn post-policy\n  bmp monitor l2vpn evpn pre-policy\n  bmp monitor l2vpn evpn post-policy"
+        },
+        {
+          "vendor": "Cisco IOS-XR",
+          "config": "bmp server 1\n host {watcher_host_ip} port {bmp_port}\n description topolograph\n!\nrouter bgp <asn>\n neighbor <peer-ip>\n  bmp-activate server 1"
+        },
+        {
+          "vendor": "Juniper Junos",
+          "config": "routing-options {\n    bmp {\n        station topolograph {\n            station-address {watcher_host_ip};\n            station-port {bmp_port};\n            route-monitoring { pre-policy; post-policy; }\n        }\n    }\n}"
+        }
+      ]
+    },
+    {
+      "id": "bmp-topology",
+      "title": "Topology only",
+      "description": "The same BMP session, but only the periodic topology snapshot is sent: BGP topology and search over all received routes, no change events and no history.",
       "router_requirements": [
         "BMP support (RFC 7854)",
         "TCP reachability to the watcher host"
@@ -107,6 +130,12 @@
       "id": "source_id",
       "type": "slug",
       "env": "SOURCE_ID",
+      "source": "server"
+    },
+    {
+      "id": "watcher_mode",
+      "type": "string",
+      "env": "WATCHER_MODE",
       "source": "server"
     }
   ],

@@ -80,9 +80,9 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
 
     Start the collector and Fluent Bit:
     ```bash
-    docker compose --profile collector up -d
+    docker compose --profile collector --profile events up -d
     ```
-    Stop it with the same profile: `docker compose --profile collector down`.
+    Stop it with the same profiles: `docker compose --profile collector --profile events down`. Without `--profile events` only the collector runs and no events reach Topolograph (the Topology only mode of the Add watcher form).
 
     `docker compose --profile gobmp up -d` runs the raw [gobmp](https://hub.docker.com/r/vadims06/gobmp) collector instead: every BMP message as is, without the snapshot/event split.
 

@@ -65,7 +65,10 @@ mv -f "$env_file" .env
 
 value() { grep "^$1=" .env | cut -d"'" -f2; }
 mkdir -p "$(value BMPWATCHER_LOG_DIR)"
-docker compose --profile collector up -d
+# Topology only sends the snapshot, so it runs no Fluent Bit; an older Topolograph names no mode
+profiles=(--profile collector)
+[ "$(value WATCHER_MODE || true)" = "bmp-topology" ] || profiles+=(--profile events)
+docker compose "${profiles[@]}" up -d
 
 echo
 echo "BMP Watcher $(value WATCHER_NAME) is running."
