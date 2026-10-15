@@ -1,11 +1,13 @@
 # Fluent Bit ships every collector's events.jsonl under BMPWATCHER_LOG_DIR to
 # Topolograph; adding a collector there needs no restart.
-#   docker compose up -d                      Fluent Bit only
-#   docker compose --profile collector up -d  plus the bmpwatcher collector
+#   docker compose --profile events up -d     Fluent Bit only
+#   docker compose --profile collector up -d  the bmpwatcher collector only
+#   (both profiles together are the Topology + events mode; Topology only runs the collector alone)
 #   docker compose --profile gobmp up -d      plus the standalone gobmp collector
 services:
   fluentbit:
-    image: fluent/fluent-bit:3.2
+    profiles: ["events"]
+    image: ${REGISTRY_PREFIX:-}fluent/fluent-bit:3.2
     container_name: ${CONTAINER_NAME:-bmp-fluentbit}
     restart: unless-stopped
     volumes:
@@ -25,7 +27,7 @@ services:
 
   bmpwatcher:
     profiles: ["collector"]
-    image: ${BMP_IMAGE:-vadims06/bmpwatcher:latest}
+    image: ${BMP_IMAGE:-${REGISTRY_PREFIX:-}vadims06/bmpwatcher:${WATCHER_VERSION:-v1.1.0}}
     container_name: ${BMP_CONTAINER_NAME:-bmpwatcher}
     restart: unless-stopped
     ports:
@@ -47,7 +49,7 @@ services:
   # table-replay/event split. One source at a time.
   gobmp:
     profiles: ["gobmp"]
-    image: ${GOBMP_IMAGE:-vadims06/gobmp:v1.0}
+    image: ${GOBMP_IMAGE:-${REGISTRY_PREFIX:-}vadims06/gobmp:v1.0}
     container_name: ${GOBMP_CONTAINER_NAME:-gobmp}
     restart: unless-stopped
     ports:
