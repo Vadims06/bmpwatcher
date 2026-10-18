@@ -4,9 +4,18 @@ BMP Watcher is a monitoring tool of BGP control-plane changes for network engine
 > [!NOTE]
 > BGP monitoring needs [Topolograph v2.69](https://github.com/Vadims06/topolograph/releases) or later, EVPN needs Topolograph v2.73.
 
+> [!NOTE]
+> Watchers that feed Topolograph are an **Enterprise** feature; Community Topolograph has no watchers. Editions and contact: https://topolograph.com/#editions.
+> A watcher set up by hand (text logs, ELK, Zabbix, Loki, webhooks) stays free and open source and sends nothing to Topolograph.
+
 ## Quick start
-1. In Topolograph open **Watchers → Add watcher → BMP Watcher**, fill in the form and copy the two command blocks it shows. Topolograph registers the watcher and puts its token into the command.
-2. Run them on a Docker host:
+1. Enterprise: in Topolograph open **Add → Watcher**, choose the type (BMP Watcher) and the mode (BMP) and fill in the form. The wizard issues a watcher token and shows one install command.
+
+    ![Add watcher: choose type and mode](https://raw.githubusercontent.com/Vadims06/topolograph/master/docs/static/ui/watcher-mode.png)
+
+    ![Add watcher: install command](https://raw.githubusercontent.com/Vadims06/topolograph/master/docs/static/ui/watcher-install.png)
+
+2. Run the command on a Docker host. It downloads `install.sh` pinned to a release tag, checks its SHA-256 and runs it with `--url`, `--token` and `--ref`; `install.sh` clones this repository into `/opt/topolograph/bmpwatcher`, checks out the tag and starts `configure.sh`. The same steps by hand:
 
     ```bash
     # 1. Download
@@ -16,7 +25,7 @@ BMP Watcher is a monitoring tool of BGP control-plane changes for network engine
     sudo ./configure.sh --url <topolograph-url> --token <watcher-token>
     ```
     `configure.sh` checks Docker, Docker Compose, curl, git and root, fetches your answers from Topolograph, writes `.env` and starts the collector. It installs nothing from the internet besides the images; run it again after changing answers or rotating the token.
-3. Point BMP on your routers to `<host-ip>:11019` (or the BMP port you set in the form), see [Device configuration](#device-configuration). The watcher page in Topolograph shows when the command ran, when a router connected and a link to the graph.
+3. Point BMP on your routers to `<host-ip>:11019` (or the BMP port you set in the form), see [Device configuration](#device-configuration). The watcher page in Topolograph shows when the command ran, when a router connected and a link to the graph; once a router connects the watcher shows "Connected".
 
 Without the Watchers page (Topolograph before v2.74), expand **Manual setup** in [How to connect BMP watcher to real network](#how-to-connect-bmp-watcher-to-real-network).
 
@@ -54,7 +63,7 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
 
 3. Setup BMP Watcher
 
-    In Topolograph open **Watchers → Add watcher → BMP Watcher**, fill in the form and run the two command blocks it shows on the Docker host, as in [Quick start](#quick-start). Topolograph issues a token for this watcher only and puts it into the command. To change answers or after **Rotate token**, run `configure.sh` again; when a newer version is out, the watcher page shows the update command.
+    In Topolograph open **Add → Watcher**, fill in the form and run the two command blocks it shows on the Docker host, as in [Quick start](#quick-start). Topolograph issues a token for this watcher only and puts it into the command. To change answers or after **Rotate token**, run `configure.sh` again; when a newer version is out, the watcher page shows the update command.
 
     <details>
     <summary><b>Manual setup</b>: Topolograph before v2.74, or a collector configured by hand</summary>
