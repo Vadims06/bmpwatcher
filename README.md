@@ -27,7 +27,7 @@ BMP Watcher is a monitoring tool of BGP control-plane changes for network engine
     `configure.sh` checks Docker, Docker Compose, curl, git and root, fetches your answers from Topolograph, writes `.env` and starts the collector. It installs nothing from the internet besides the images; run it again after changing answers or rotating the token.
 3. Point BMP on your routers to `<host-ip>:11019` (or the BMP port you set in the form), see [Device configuration](#device-configuration). The watcher page in Topolograph shows when the command ran, when a router connected and a link to the graph; once a router connects the watcher shows "Connected".
 
-Without the Watchers page (Topolograph before v2.74), expand **Manual setup** in [How to connect BMP watcher to real network](#how-to-connect-bmp-watcher-to-real-network).
+Without the watcher wizard (Topolograph before v2.74), expand **Manual setup** in [How to connect BMP watcher to real network](#how-to-connect-bmp-watcher-to-real-network).
 
 No events on the dashboard? Start with [Troubleshooting](#troubleshooting).
 
