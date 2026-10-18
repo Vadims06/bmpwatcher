@@ -5,8 +5,6 @@ BMP Watcher streams BGP changes into Topolograph: peer up and down, route change
 > BGP monitoring needs [Topolograph v2.69](https://github.com/Vadims06/topolograph/releases) or later, EVPN needs Topolograph v2.73.
 
 > [!NOTE]
-> Watchers that feed Topolograph are an **Enterprise** feature; Community Topolograph has no watchers. Editions and contact: https://topolograph.com/#editions.
-
 ![BGP sessions drawn over the IGP graph in Topolograph](docs/ui/bgp-sessions.png)
 *BGP sessions over the IGP graph: open a graph and switch on **BGP sessions**.*
 
@@ -228,3 +226,5 @@ The BGP graph is on Topolograph, but route changes do not appear.
 ### Community & feedback
 * https://t.me/topolograph
 * admin at topolograph.com
+
+> With Community Topolograph, bmpwatcher runs in **Topology only** mode: the current BGP and EVPN state (peers, sessions, routes), without change events. **Topology + events**, event history and Monitoring are **Enterprise** features. Editions and contact: https://topolograph.com/#editions.
