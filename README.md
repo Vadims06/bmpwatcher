@@ -6,7 +6,6 @@ BMP Watcher is a monitoring tool of BGP control-plane changes for network engine
 
 > [!NOTE]
 > Watchers that feed Topolograph are an **Enterprise** feature; Community Topolograph has no watchers. Editions and contact: https://topolograph.com/#editions.
-> A watcher set up by hand (text logs, ELK, Zabbix, Loki, webhooks) stays free and open source and sends nothing to Topolograph.
 
 ## Quick start
 1. Enterprise: in Topolograph open **Add → Watcher**, choose the type (BMP Watcher) and the mode (BMP) and fill in the form. The wizard issues a watcher token and shows one install command.
