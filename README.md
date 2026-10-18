@@ -1,5 +1,5 @@
 # BGP Topology Watcher (BMP Watcher)
-BMP Watcher is a monitoring tool of BGP control-plane changes for network engineers. It works as a passive BMP station: routers open a BMP session towards it and stream their BGP tables, the watcher never peers and never connects to a router. It collects IPv4/IPv6 unicast, VPNv4/VPNv6 and EVPN routes, sends the whole table to **Topolograph** as a BGP graph beside your OSPF/IS-IS graphs, and ships every later change to Topolograph through **Fluent Bit**. Components are wrapped into containers: the collector is the published image `vadims06/bmpwatcher`, tagged with the version in `VERSION`, and this repository carries the compose file that runs it.
+BMP Watcher streams BGP changes into Topolograph: peer up and down, route changes and EVPN MAC moves appear on the graph and in its tables.
 
 > [!NOTE]
 > BGP monitoring needs [Topolograph v2.69](https://github.com/Vadims06/topolograph/releases) or later, EVPN needs Topolograph v2.73.
@@ -7,14 +7,35 @@ BMP Watcher is a monitoring tool of BGP control-plane changes for network engine
 > [!NOTE]
 > Watchers that feed Topolograph are an **Enterprise** feature; Community Topolograph has no watchers. Editions and contact: https://topolograph.com/#editions.
 
+![BGP sessions drawn over the IGP graph in Topolograph](docs/ui/bgp-sessions.png)
+*BGP sessions over the IGP graph: open a graph and switch on **BGP sessions**.*
+
+## What you see in Topolograph
+**BGP events.** Every route add, change and withdraw in the period, with the EVPN fields. Open a graph, then **BGP routes → Events**.
+![BGP events table](docs/ui/bgp-events.png)
+
+**Route compare.** Routes added, withdrawn or changed between two moments, T0 and T1. Here the prefix 100.14.210.0/24 was added. Open **BGP routes → Compare**.
+![BGP route compare](docs/ui/route-compare.png)
+
+**EVPN MAC move.** Events filtered by a MAC address. The MAC 00:c1:ab:00:00:01 moved from VTEP 123.14.14.14 to VTEP 123.15.15.15.
+![EVPN MAC move event](docs/ui/evpn-mac-move.png)
+
 ## Quick start
-1. Enterprise: in Topolograph open **Add → Watcher**, choose the type (BMP Watcher) and the mode (BMP) and fill in the form. The wizard issues a watcher token and shows one install command.
+1. Enterprise: in Topolograph open **Add → Watcher**, choose the type (BMP Watcher) and the mode (**Topology + events** or **Topology only**) and fill in the form. The wizard issues a watcher token and shows one install command.
 
-    ![Add watcher: choose type and mode](https://raw.githubusercontent.com/Vadims06/topolograph/master/docs/static/ui/watcher-mode.png)
+    ![Add watcher: BMP modes](docs/ui/watcher-mode.png)
 
-    ![Add watcher: install command](https://raw.githubusercontent.com/Vadims06/topolograph/master/docs/static/ui/watcher-install.png)
+    ![Add watcher: install command](docs/ui/watcher-install.png)
 
-2. Run the command on a Docker host. It downloads `install.sh` pinned to a release tag, checks its SHA-256 and runs it with `--url`, `--token` and `--ref`; `install.sh` clones this repository into `/opt/topolograph/bmpwatcher`, checks out the tag and starts `configure.sh`. The same steps by hand:
+2. Run the command on a Docker host. It downloads `install.sh` pinned to a release tag, checks its SHA-256 and runs it with `--url`, `--token` and `--ref`:
+
+    ```bash
+    curl -fsSLo install.sh https://raw.githubusercontent.com/Vadims06/bmpwatcher/<version>/install.sh \
+      && echo "<sha256>  install.sh" | sha256sum -c \
+      && sudo bash install.sh --url <topolograph-url> --token <watcher-token> --ref <version>
+    ```
+
+    `install.sh` clones this repository into `/opt/topolograph/bmpwatcher`, checks out the tag and starts `configure.sh`. The same steps by hand:
 
     ```bash
     # 1. Download
@@ -40,6 +61,8 @@ No events on the dashboard? Start with [Troubleshooting](#troubleshooting).
 * Pre-policy, post-policy and Loc-RIB (RFC 9069) observations are kept apart, so a route the router rejected is never shown as installed
 
 ## Architecture
+BMP Watcher is a monitoring tool of BGP control-plane changes for network engineers. It works as a passive BMP station: routers open a BMP session towards it and stream their BGP tables, the watcher never peers and never connects to a router. It collects IPv4/IPv6 unicast, VPNv4/VPNv6 and EVPN routes, sends the whole table to **Topolograph** as a BGP graph beside your OSPF/IS-IS graphs, and ships every later change to Topolograph through **Fluent Bit**. Components are wrapped into containers: the collector is the published image `vadims06/bmpwatcher`, tagged with the version in `VERSION`, and this repository carries the compose file that runs it.
+
 ```
 routers --BMP (TCP 11019)--> bmpwatcher --snapshot--> Topolograph
                                   |
@@ -58,7 +81,7 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
 2. Setup Topolograph
 
     Launch your own Topolograph with [topolograph-docker](https://github.com/Vadims06/topolograph-docker) or use the public https://topolograph.com.
-    * Log in: on your own Topolograph with the user from its `.env` (`TOPOLOGRAPH_WEB_API_USERNAME_EMAIL` / `TOPOLOGRAPH_WEB_API_PASSWORD`, by default `ospf@topolograph.com` / `ospf`), on topolograph.com sign up.
+    * Log in: on your own Topolograph with the user from its `.env` (`TOPOLOGRAPH_WEB_API_USERNAME_EMAIL` / `TOPOLOGRAPH_WEB_API_PASSWORD`), on topolograph.com sign up.
 
 3. Setup BMP Watcher
 
