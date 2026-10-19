@@ -1,10 +1,9 @@
 # BGP Topology Watcher (BMP Watcher)
-BMP Watcher streams BGP changes into Topolograph: peer up and down, route changes and EVPN MAC moves appear on the graph and in its tables.
+BMP Watcher is a monitoring tool of BGP control-plane changes for network engineers. It works as a passive BMP station: routers open a BMP session towards it and stream their BGP tables, the watcher never peers and never connects to a router. It collects IPv4/IPv6 unicast, VPNv4/VPNv6 and EVPN routes, sends the whole table to **Topolograph** as a BGP graph beside your OSPF/IS-IS graphs, and streams every later change: peer up and down, route changes and EVPN MAC moves appear on the graph and in its tables. In the **Topology only** mode it sends the table without change events.
 
 > [!NOTE]
 > BGP monitoring needs [Topolograph v2.69](https://github.com/Vadims06/topolograph/releases) or later, EVPN needs Topolograph v2.73.
 
-> [!NOTE]
 ![BGP sessions drawn over the IGP graph in Topolograph](docs/ui/bgp-sessions.png)
 *BGP sessions over the IGP graph: open a graph and switch on **BGP sessions**.*
 
