@@ -1,26 +1,50 @@
 # BGP Topology Watcher (BMP Watcher)
-BMP Watcher is a monitoring tool of BGP control-plane changes for network engineers. It works as a passive BMP station: routers open a BMP session towards it and stream their BGP tables, the watcher never peers and never connects to a router. It collects IPv4/IPv6 unicast, VPNv4/VPNv6 and EVPN routes, sends the whole table to **Topolograph** as a BGP graph beside your OSPF/IS-IS graphs, and ships every later change to Topolograph through **Fluent Bit**. Components are wrapped into containers: the collector is the published image `vadims06/bmpwatcher:latest`, and this repository carries the compose file that runs it.
+BMP Watcher is a monitoring tool of BGP control-plane changes for network engineers. It works as a passive BMP station: routers open a BMP session towards it and stream their BGP tables, the watcher never peers and never connects to a router. It collects IPv4/IPv6 unicast, VPNv4/VPNv6 and EVPN routes, sends the whole table to **Topolograph** as a BGP graph beside your OSPF/IS-IS graphs, and streams every later change: peer up and down, route changes and EVPN MAC moves appear on the graph and in its tables. In the **Topology only** mode it sends the table without change events.
 
 > [!NOTE]
 > BGP monitoring needs [Topolograph v2.69](https://github.com/Vadims06/topolograph/releases) or later, EVPN needs Topolograph v2.73.
 
+![BGP sessions drawn over the IGP graph in Topolograph](docs/ui/bgp-sessions.png)
+*BGP sessions over the IGP graph: open a graph and switch on **BGP sessions**.*
+
+## What you see in Topolograph
+**BGP events.** Every route add, change and withdraw in the period, with the EVPN fields. Open a graph, then **BGP routes → Events**.
+![BGP events table](docs/ui/bgp-events.png)
+
+**Route compare.** Routes added, withdrawn or changed between two moments, T0 and T1. Here the prefix 100.14.210.0/24 was added. Open **BGP routes → Compare**.
+![BGP route compare](docs/ui/route-compare.png)
+
+**EVPN MAC move.** Events filtered by a MAC address. The MAC 00:c1:ab:00:00:01 moved from VTEP 123.14.14.14 to VTEP 123.15.15.15.
+![EVPN MAC move event](docs/ui/evpn-mac-move.png)
+
 ## Quick start
-1. On a Docker host, install Topolograph:
+1. Enterprise: in Topolograph open **Add → Watcher**, choose the type (BMP Watcher) and the mode (**Topology + events** or **Topology only**) and fill in the form. The wizard issues a watcher token and shows one install command.
+
+    ![Add watcher: BMP modes](docs/ui/watcher-mode.png)
+
+    ![Add watcher: install command](docs/ui/watcher-install.png)
+
+2. Run the command on a Docker host. It downloads `install.sh` pinned to a release tag, checks its SHA-256 and runs it with `--url`, `--token` and `--ref`:
 
     ```bash
-    curl -O https://raw.githubusercontent.com/Vadims06/topolograph-docker/master/install.sh
-    chmod +x install.sh
-    sudo ./install.sh
+    curl -fsSLo install.sh https://raw.githubusercontent.com/Vadims06/bmpwatcher/<version>/install.sh \
+      && echo "<sha256>  install.sh" | sha256sum -c \
+      && sudo bash install.sh --url <topolograph-url> --token <watcher-token> --ref <version>
     ```
-2. Get BMP Watcher and set `TOPOLOGRAPH_HOST` (the host IP, not `localhost`), `TOPOLOGRAPH_PORT` and `TOPOLOGRAPH_API_TOKEN` in `.env`:
+
+    `install.sh` clones this repository into `/opt/topolograph/bmpwatcher`, checks out the tag and starts `configure.sh`. The same steps by hand:
 
     ```bash
-    git clone https://github.com/Vadims06/bmpwatcher.git
-    cd bmpwatcher
-    cp .env.example .env
-    docker compose --profile collector up -d
+    # 1. Download
+    [ -d /opt/topolograph/bmpwatcher ] || sudo git clone https://github.com/Vadims06/bmpwatcher /opt/topolograph/bmpwatcher
+    cd /opt/topolograph/bmpwatcher && sudo git fetch --tags origin <version> && sudo git checkout --detach FETCH_HEAD
+    # 2. Configure and run
+    sudo ./configure.sh --url <topolograph-url> --token <watcher-token>
     ```
-3. Point BMP on your routers to `<host-ip>:11019`, see [Device configuration](#device-configuration).
+    `configure.sh` checks Docker, Docker Compose, curl, git and root, fetches your answers from Topolograph, writes `.env` and starts the collector. It installs nothing from the internet besides the images; run it again after changing answers or rotating the token.
+3. Point BMP on your routers to `<host-ip>:11019` (or the BMP port you set in the form), see [Device configuration](#device-configuration). The watcher page in Topolograph shows when the command ran, when a router connected and a link to the graph; once a router connects the watcher shows "Connected".
+
+Without the watcher wizard (Topolograph before v2.74), expand **Manual setup** in [How to connect BMP watcher to real network](#how-to-connect-bmp-watcher-to-real-network).
 
 No events on the dashboard? Start with [Troubleshooting](#troubleshooting).
 
@@ -34,6 +58,8 @@ No events on the dashboard? Start with [Troubleshooting](#troubleshooting).
 * Pre-policy, post-policy and Loc-RIB (RFC 9069) observations are kept apart, so a route the router rejected is never shown as installed
 
 ## Architecture
+BMP Watcher is a monitoring tool of BGP control-plane changes for network engineers. It works as a passive BMP station: routers open a BMP session towards it and stream their BGP tables, the watcher never peers and never connects to a router. It collects IPv4/IPv6 unicast, VPNv4/VPNv6 and EVPN routes, sends the whole table to **Topolograph** as a BGP graph beside your OSPF/IS-IS graphs, and ships every later change to Topolograph through **Fluent Bit**. Components are wrapped into containers: the collector is the published image `vadims06/bmpwatcher`, tagged with the version in `VERSION`, and this repository carries the compose file that runs it.
+
 ```
 routers --BMP (TCP 11019)--> bmpwatcher --snapshot--> Topolograph
                                   |
@@ -51,11 +77,17 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
 1. Choose a Linux host with Docker installed. Enable Docker at boot (`systemctl enable docker`): the containers restart after a crash and a reboot.
 2. Setup Topolograph
 
-    Launch your own Topolograph with [topolograph-docker](https://github.com/Vadims06/topolograph-docker) (`install.sh` above) or use the public https://topolograph.com.
-    * Log in: on your own Topolograph with the user from its `.env` (`TOPOLOGRAPH_WEB_API_USERNAME_EMAIL` / `TOPOLOGRAPH_WEB_API_PASSWORD`, by default `ospf@topolograph.com` / `ospf`), on topolograph.com sign up.
-    * Create a token: **API → Token → Create Token**, copy the `sk-...` value.
+    Launch your own Topolograph with [topolograph-docker](https://github.com/Vadims06/topolograph-docker) or use the public https://topolograph.com.
+    * Log in: on your own Topolograph with the user from its `.env` (`TOPOLOGRAPH_WEB_API_USERNAME_EMAIL` / `TOPOLOGRAPH_WEB_API_PASSWORD`), on topolograph.com sign up.
 
 3. Setup BMP Watcher
+
+    In Topolograph open **Add → Watcher**, fill in the form and run the two command blocks it shows on the Docker host, as in [Quick start](#quick-start). Topolograph issues a token for this watcher only and puts it into the command. To change answers or after **Rotate token**, run `configure.sh` again; when a newer version is out, the watcher page shows the update command.
+
+    <details>
+    <summary><b>Manual setup</b>: Topolograph before v2.74, or a collector configured by hand</summary>
+
+    Create a token in Topolograph: **API → Token → Create Token**, copy the `sk-...` value.
 
     ```bash
     git clone https://github.com/Vadims06/bmpwatcher.git
@@ -71,14 +103,18 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
     > * `TOPOLOGRAPH_API_TOKEN` - the `sk-...` token
     > * `SOURCE_ID` - name of this collector in Topolograph, e.g. `dc1-rr`. Keep it stable: recreating the container with the same name keeps its data together
     > * `BMPWATCHER_LOG_DIR` - where the collector writes its files, by default `/var/log/bmpwatcher`
+    > * `WATCHER_VERSION` - collector image tag, keep it equal to the `VERSION` file of this checkout
+    > * `REGISTRY_PREFIX` - empty, or a Docker Hub mirror put before every image, e.g. `mirror.example.com:5000/`
 
     Start the collector and Fluent Bit:
     ```bash
-    docker compose --profile collector up -d
+    docker compose --profile collector --profile events up -d
     ```
-    Stop it with the same profile: `docker compose --profile collector down`.
+    Stop it with the same profiles: `docker compose --profile collector --profile events down`. Without `--profile events` only the collector runs and no events reach Topolograph (the Topology only mode of the Add watcher form).
 
     `docker compose --profile gobmp up -d` runs the raw [gobmp](https://hub.docker.com/r/vadims06/gobmp) collector instead: every BMP message as is, without the snapshot/event split.
+
+    </details>
 
 4. Device configuration
 
@@ -145,7 +181,7 @@ A 13-router FRR lab is placed here **containerlab/13-hosts-demo-bgp**: an OSPF u
     For EVPN, the IGP graph must have the same Router IDs as the BGP speakers: upload the LSDB of your network or run [OSPF Watcher](https://github.com/Vadims06/ospfwatcher) / [IS-IS Watcher](https://github.com/Vadims06/isiswatcher). The same answers over the API:
     ```bash
     TOPOLOGRAPH_URL=http://<host-ip>:8080   # https://topolograph.com for the public one
-    T=sk-...
+    T=sk-...   # a personal token from API → Token; the watcher token works only on watcher endpoints
     curl -s "$TOPOLOGRAPH_URL/api/graph/?protocol=bgp" -H "Authorization: Bearer $T"             # the IGP graph with BGP bound to it
     curl -s "$TOPOLOGRAPH_URL/api/graph/<graph_time>/vpns" -H "Authorization: Bearer $T"          # VNIs and VRFs
     curl -s "$TOPOLOGRAPH_URL/api/graph/<graph_time>/nodes?protocol=bgp&vni=<vni>" -H "Authorization: Bearer $T"  # leaves of a VNI
@@ -189,3 +225,5 @@ The BGP graph is on Topolograph, but route changes do not appear.
 ### Community & feedback
 * https://t.me/topolograph
 * admin at topolograph.com
+
+> With Community Topolograph, bmpwatcher runs in **Topology only** mode: the current BGP and EVPN state (peers, sessions, routes), without change events. **Topology + events**, event history and Monitoring are **Enterprise** features. Editions and contact: https://topolograph.com/#editions.
