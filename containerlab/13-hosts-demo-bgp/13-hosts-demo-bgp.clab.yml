@@ -13,18 +13,11 @@ topology:
     bmpwatcher:
       image: ${BMPWATCHER_IMAGE:=vadims06/bmpwatcher:latest}
       mgmt-ipv4: 172.31.30.100
-      binds:
-        - ./artifacts:/var/log/bmpwatcher
-      # TOPOLOGRAPH_HOST, TOPOLOGRAPH_PORT and TOPOLOGRAPH_API_TOKEN, shared with Fluent Bit.
+      # TOPOLOGRAPH_HOST, TOPOLOGRAPH_PORT and TOPOLOGRAPH_API_TOKEN of a BMP watcher.
       env-files:
         - ../../.env
       cmd: >-
         --bmp-port=11019
-        --watcher-name=bmpwatcher
-        --source-id=13-hosts-demo-bgp
-        --events=/var/log/bmpwatcher/events.jsonl
-        --topology-file=/var/log/bmpwatcher/topology.json
-        --topolograph-topology-file=/var/log/bmpwatcher/topolograph_topology.json
         --collection-period-seconds=20
         --stability-seconds=5
         --collection-timeout-seconds=60

@@ -3,8 +3,8 @@
 This lab consists of 13 FRR routers, 3 hosts and a single BMP Watcher. The OSPF underlay is the one of Topolograph's
 [13-hosts-demo-ospf](https://github.com/Vadims06/topolograph/tree/master/containerlab/13-hosts-demo-ospf)
 lab (same links, addresses and router IDs), with a BGP EVPN / VXLAN overlay on top. Both route reflectors stream
-their EVPN tables over BMP to BMP Watcher, which sends the table to Topolograph as a BGP graph and writes every change
-to `artifacts/events.jsonl`; Fluent Bit ships those changes to Topolograph.
+their EVPN tables over BMP to BMP Watcher, which sends the table to Topolograph as a BGP graph and posts every change
+to Topolograph.
 
 ### What this lab shows
 * The EVPN fabric in Topolograph: which VNIs and VRFs it has, which leaves carry a VNI, behind which leaf a host is,
@@ -17,8 +17,7 @@ to `artifacts/events.jsonl`; Fluent Bit ships those changes to Topolograph.
 |---|---|
 | Linux host with Docker, [containerlab](https://containerlab.dev/install/) and the `vxlan` kernel module | runs the lab |
 | Topolograph: [topolograph-docker](https://github.com/Vadims06/topolograph-docker) or https://topolograph.com | receives the BGP graph and the events |
-| Topolograph API token | the collector and Fluent Bit authenticate with it |
-| Fluent Bit from the root of this repository | ships the route events, including the MAC move. Without it only the table reaches Topolograph |
+| Token of a BMP watcher created on the Topolograph Watchers page | the collector does not start without it |
 
 No OSPF Watcher is needed: every Topolograph account already has the 13-router OSPF demo graph with the same router IDs,
 and the BGP graph of the lab is bound to it.
@@ -45,10 +44,10 @@ and the BGP graph of the lab is bound to it.
 > [!NOTE]
 > To connect to a router use `sudo docker exec -it clab-13-hosts-demo-bgp-r100 vtysh`.
 
-1. Log in to Topolograph and create a token: **API → Token → Create Token**, copy the `sk-...` value. On your own
+1. Log in to Topolograph, create a BMP watcher on the Watchers page and copy its token. On your own
    Topolograph the user is in its `.env` (by default `ospf@topolograph.com` / `ospf`).
 
-2. Create `.env` in the root of this repository. The lab's BMP Watcher and Fluent Bit both read it.
+2. Create `.env` in the root of this repository. The lab's BMP Watcher reads it.
     ```
     cp .env.example .env
     ```
@@ -56,9 +55,7 @@ and the BGP graph of the lab is bound to it.
     > [!NOTE]
     > * `TOPOLOGRAPH_HOST` - *the IP address of the host where Topolograph runs, not `localhost`*. For topolograph.com - `topolograph.com`
     > * `TOPOLOGRAPH_PORT` - by default `8080`, `443` for topolograph.com
-    > * `WEBHOOK_TLS_ON` - `off` for your own Topolograph, `on` for topolograph.com
-    > * `TOPOLOGRAPH_API_TOKEN` - the `sk-...` token
-    > * `BMPWATCHER_LOG_DIR=./containerlab` - where Fluent Bit finds the lab's `artifacts/events.jsonl`
+    > * `TOPOLOGRAPH_API_TOKEN` - the watcher token
 
 3. Start the lab
     ```
@@ -86,17 +83,7 @@ and the BGP graph of the lab is bound to it.
     ```
     A `401` instead means the token is wrong, a connection error means `TOPOLOGRAPH_HOST`/`TOPOLOGRAPH_PORT`.
 
-5. Start Fluent Bit from the root of this repository. The lab has its own BMP Watcher, so start it without the
-   `collector` profile:
-    ```
-    cd ../..
-    sudo docker compose up -d
-    sudo docker logs bmp-fluentbit 2>&1 | grep events.jsonl
-    ```
-    Expected output:
-    ```
-    [ info] [input:tail:tail.0] inotify_fs_add(): inode=5640563 watch_fd=1 name=/labs/13-hosts-demo-bgp/artifacts/events.jsonl
-    ```
+5. Events need no extra service: the lab's BMP Watcher posts them to Topolograph itself.
 
 6. Find the IGP graph the lab's BGP is bound to. `TOPOLOGRAPH_URL` is the address you open Topolograph at:
    `http://<host-ip>:8080` for your own, `https://topolograph.com` for the public one.
@@ -187,16 +174,8 @@ and the BGP graph of the lab is bound to it.
     ```
     host1 now sits behind r15 (VTEP 123.15.15.15)
     ```
-    Fluent Bit sends the changes within a few seconds:
-    ```
-    sudo docker logs bmp-fluentbit 2>&1 | grep -A2 accepted | tail -3
-    ```
-    Expected output:
-    ```
-      "accepted": 9,
-      "duplicates": 0
-    }
-    ```
+    The BMP Watcher posts the changes within a few seconds. A failure, such as `event send failed`, shows in
+    `sudo docker logs clab-13-hosts-demo-bgp-bmpwatcher`.
 
 9. Check the MAC move in Topolograph
 
