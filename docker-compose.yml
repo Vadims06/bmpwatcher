@@ -4,7 +4,7 @@
 services:
   bmpwatcher:
     profiles: ["collector"]
-    image: ${BMP_IMAGE:-${REGISTRY_PREFIX:-}vadims06/bmpwatcher:${WATCHER_VERSION:-v1.2.0}}
+    image: ${BMP_IMAGE:-${REGISTRY_PREFIX:-}vadims06/bmpwatcher:${WATCHER_VERSION:-v1.3.0}}
     container_name: ${BMP_CONTAINER_NAME:-bmpwatcher}
     # An ended token exits 0 and must stay stopped; other failures restart.
     restart: on-failure
